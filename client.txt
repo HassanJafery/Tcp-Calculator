@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int client_fd;
+    struct sockaddr_in server_addr;
+    char buffer[BUFFER_SIZE];
+    double num1, num2, result;
+
+    // Create the client socket
+    client_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_fd < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // Set the server address
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr.sin_port = htons(PORT);
+
+    // Connect to the server
+    if (connect(client_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
+
+    while (1) {
+        printf("\nMenu:\n");
+        printf("1. Add\n");
+        printf("2. Subtract\n");
+        printf("3. Multiply\n");
+        printf("4. Divide\n");
+        printf("0. Exit\n");
+        printf("Enter your choice: ");
+        fgets(buffer, BUFFER_SIZE, stdin);
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove the newline character
+
+        // Send the operation choice to the server
+        write(client_fd, buffer, strlen(buffer) + 1);
+
+        // Check if the user wants to exit
+        if (atoi(buffer) == 0) {
+            break;
+        }
+
+        // Get the two numbers from the user
+        printf("Enter the first number: ");
+        scanf("%lf", &num1);
+        printf("Enter the second number: ");
+        scanf("%lf", &num2);
+        getchar(); // Consume the newline character
+
+        // Send the numbers to the server
+        write(client_fd, &num1, sizeof(double));
+        write(client_fd, &num2, sizeof(double));
+
+        // Read the result from the server
+        read(client_fd, &result, sizeof(double));
+        printf("Result: %.2f\n", result);
+    }
+
+    // Close the client socket
+    close(client_fd);
+
+    return 0;
+}
